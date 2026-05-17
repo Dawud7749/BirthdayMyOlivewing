@@ -2227,12 +2227,10 @@ function openEnvelope() {
     triggerFlowerWallReveal();
   }, 880);
 
-  /* Step 3: stop canvas + clear particles + sembunyikan screen1, lalu transisi */
+  /* Step 3: sembunyikan screen1 lalu transisi.
+     JANGAN cancel canvas — biarkan partikel terus jatuh dan muncul lagi di screen2
+     setelah curtain fade out (karena canvas z-index 850 di bawah curtain 9500). */
   setTimeout(() => {
-    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-    /* WAJIB: clear array + canvas, kalau tidak partikel terakhir akan frozen di layar */
-    particles = [];
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     $('screen1').style.visibility = 'hidden';
     fadeTo('screen2');
   }, 2000);
