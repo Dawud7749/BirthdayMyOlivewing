@@ -774,6 +774,33 @@
       position: absolute; font-size: 1.4rem; color: var(--sunflower);
       animation: wishSparkle 1.6s ease-out infinite;
     }
+
+    /* ============================================================
+       FLOWER GARDEN — bunga tumbuh dari bawah setelah lilin mati
+       ============================================================ */
+    #flower-garden {
+      position: absolute; inset: 0;
+      pointer-events: none; overflow: visible; z-index: 5;
+    }
+    @keyframes flowerRise {
+      0%   { transform: translateY(120px) scale(0.05) rotate(var(--fr,0deg)); opacity: 0; }
+      22%  { opacity: 1; }
+      68%  { transform: translateY(-22px)  scale(1.12)  rotate(var(--fr,0deg)); }
+      84%  { transform: translateY(8px)    scale(0.95)  rotate(var(--fr,0deg)); }
+      100% { transform: translateY(0)      scale(1)     rotate(var(--fr,0deg)); opacity: 1; }
+    }
+    @keyframes gardenSway {
+      0%, 100% { transform: translateY(0)   scale(1) rotate(var(--fr,0deg)); }
+      50%       { transform: translateY(-9px) scale(1) rotate(calc(var(--fr,0deg) + 4deg)); }
+    }
+    .garden-flower {
+      position: absolute; bottom: 0;
+      will-change: transform, opacity;
+      animation-name: flowerRise, gardenSway;
+      animation-timing-function: cubic-bezier(0.22,1,0.36,1), ease-in-out;
+      animation-fill-mode: both, none;
+      animation-iteration-count: 1, infinite;
+    }
   </style>
 </head>
 <body>
@@ -1557,6 +1584,7 @@
      MODAL 4C — CAKE
      ============================================================ -->
 <div id="modal-cake" class="modal">
+  <div id="flower-garden"></div>
   <div class="cake-inner">
     <h2 class="cake-title">Happy 22nd Birthday, Cena</h2>
 
@@ -1893,39 +1921,59 @@ function spawnFlowerWall(containerId, count) {
   }
 }
 
-/* ---------------- FLOWER WALL REVEAL — canvas burst (smooth, no DOM flood) ---------------- */
+/* ---------------------------------------------------------------
+   FLOWER WALL REVEAL — smooth multi-wave canvas burst
+   Partikel disebarkan bertahap (~8/frame) agar tidak spike.
+   --------------------------------------------------------------- */
+function spawnParticle(x, y, vx, vy, grav, fri, size, dec) {
+  const p = new Particle(x, y, false);
+  p.vx = vx; p.vy = vy;
+  p.grav = grav; p.fri = fri;
+  p.size = size; p.dec = dec; p.life = 1;
+  particles.push(p);
+}
+
 function triggerFlowerWallReveal() {
   const W = canvas.width, H = canvas.height;
-  const cx = W / 2, cy = H / 2;
+  const cx = W / 2, cy = H * 0.62;
 
-  /* Wave 1: radial burst from center */
-  for (let i = 0; i < 160; i++) {
-    const angle = (i / 160) * Math.PI * 2 + rand(-0.15, 0.15);
-    const spd   = rand(5, 22);
-    const p = new Particle(cx + rand(-30,30), cy + rand(-30,30), false);
-    p.vx   = Math.cos(angle) * spd;
-    p.vy   = Math.sin(angle) * spd - rand(2, 8);
-    p.grav = 0.14;
-    p.fri  = 0.968;
-    p.size = rand(22, 46);
-    p.dec  = rand(0.004, 0.009);
-    p.life = 1;
-    particles.push(p);
+  /* Wave 1: fountain burst mengarah ke atas — 10 partikel per 16ms */
+  for (let i = 0; i < 100; i++) {
+    setTimeout(() => {
+      const angle = rand(-Math.PI * 0.92, -Math.PI * 0.08);
+      const spd   = rand(9, 28);
+      spawnParticle(
+        cx + rand(-55, 55), cy + rand(-15, 15),
+        Math.cos(angle) * spd * rand(0.7, 1.3),
+        Math.sin(angle) * spd,
+        0.07, 0.976, rand(28, 58), rand(0.0028, 0.006)
+      );
+    }, Math.floor(i / 10) * 16);          /* batch 10/frame */
   }
 
-  /* Wave 2: delayed rain from top */
-  for (let i = 0; i < 80; i++) {
+  /* Wave 2: radial burst semua arah — mulai 200ms */
+  for (let i = 0; i < 100; i++) {
     setTimeout(() => {
-      const p = new Particle(rand(0, W), rand(-60, -10), false);
-      p.vx   = rand(-3, 3);
-      p.vy   = rand(2, 6);
-      p.grav = 0.1;
-      p.fri  = 0.99;
-      p.size = rand(18, 38);
-      p.dec  = rand(0.003, 0.007);
-      p.life = 1;
-      particles.push(p);
-    }, rand(0, 1200));
+      const angle = (i / 100) * Math.PI * 2 + rand(-0.18, 0.18);
+      const spd   = rand(7, 24);
+      spawnParticle(
+        cx + rand(-40, 40), cy + rand(-30, 30),
+        Math.cos(angle) * spd,
+        Math.sin(angle) * spd - rand(4, 11),
+        0.11, 0.971, rand(24, 52), rand(0.003, 0.007)
+      );
+    }, 200 + Math.floor(i / 10) * 16);
+  }
+
+  /* Wave 3: hujan lembut dari atas — tersebar 300–1800ms */
+  for (let i = 0; i < 70; i++) {
+    setTimeout(() => {
+      spawnParticle(
+        rand(0, W), rand(-90, -10),
+        rand(-3.5, 3.5), rand(1.5, 5),
+        0.055, 0.994, rand(20, 46), rand(0.0022, 0.0055)
+      );
+    }, rand(300, 1800));
   }
 
   startTick();
@@ -2030,6 +2078,49 @@ function initFlowerModal() {
   });
 }
 
+/* ---------------- FLOWER GARDEN (setelah lilin mati) ---------------- */
+const GARDEN_DEFS = [
+  { sym: 'sunflower', vb: '-15 -15 30 30', size: 115, x: 4  },
+  { sym: 'lily',      vb: '-20 -22 40 44', size: 138, x: 16 },
+  { sym: 'daisy',     vb: '-14 -14 28 28', size: 76,  x: 26 },
+  { sym: 'peony',     vb: '-15 -15 30 30', size: 108, x: 36 },
+  { sym: 'carnation', vb: '-16 -16 32 32', size: 96,  x: 48 },
+  { sym: 'lily',      vb: '-20 -22 40 44', size: 125, x: 59 },
+  { sym: 'anemone',   vb: '-15 -15 30 30', size: 100, x: 70 },
+  { sym: 'sunflower', vb: '-15 -15 30 30', size: 110, x: 80 },
+  { sym: 'bluebell',  vb: '-14 -16 28 32', size: 82,  x: 90 },
+  { sym: 'daisy',     vb: '-14 -14 28 28', size: 70,  x: 11 },
+  { sym: 'carnation', vb: '-16 -16 32 32', size: 78,  x: 54 },
+  { sym: 'peony',     vb: '-15 -15 30 30', size: 88,  x: 76 },
+];
+
+function bloomFlowerGarden() {
+  const garden = $('flower-garden');
+  if (!garden) return;
+  garden.innerHTML = '';
+  const frag = document.createDocumentFragment();
+
+  GARDEN_DEFS.forEach((f, i) => {
+    const el  = document.createElement('div');
+    const rot = rand(-14, 14);
+    const riseDur  = 1.4 + rand(0, 0.35);
+    const riseDelay = i * 0.10 + rand(0, 0.04);
+    const swayDur  = 3.2 + rand(0, 2.2);
+    const swayDelay = riseDelay + riseDur;
+
+    el.className = 'garden-flower';
+    el.style.cssText =
+      `left:${f.x + rand(-1.5, 1.5)}%;` +
+      `--fr:${rot}deg;` +
+      `animation-duration:${riseDur}s,${swayDur}s;` +
+      `animation-delay:${riseDelay}s,${swayDelay}s;`;
+    el.innerHTML = `<svg width="${f.size}" height="${f.size}" viewBox="${f.vb}" xmlns="http://www.w3.org/2000/svg" overflow="visible"><use href="#sym-${f.sym}"/></svg>`;
+    frag.appendChild(el);
+  });
+
+  garden.appendChild(frag);
+}
+
 /* ---------------- CAKE MODAL ---------------- */
 let candlesBlown = false;
 function resetCake() {
@@ -2043,7 +2134,11 @@ function resetCake() {
   const wt = $('wish-text');
   wt.classList.remove('show');
   wt.style.display = 'none';
+  /* bersihkan taman bunga */
+  const garden = $('flower-garden');
+  if (garden) garden.innerHTML = '';
 }
+
 function blowCandles() {
   if (candlesBlown) return;
   candlesBlown = true;
@@ -2051,23 +2146,27 @@ function blowCandles() {
 
   const flames = document.querySelectorAll('.flame-g');
   flames.forEach((g, i) => {
-    const delay = i * 72 + randI(0, 55);
+    const delay = i * 65 + randI(0, 40);
     setTimeout(() => {
-      g.style.transition = 'opacity 0.28s ease';
+      g.style.transition = 'opacity 0.32s ease';
       g.style.opacity = '0';
-      setTimeout(() => { g.style.display = 'none'; }, 300);
+      setTimeout(() => { g.style.display = 'none'; }, 340);
     }, delay);
   });
   $('tap-blow').style.display = 'none';
 
-  const total = flames.length * 72 + 380;
+  const total = flames.length * 65 + 320;
   setTimeout(() => {
-    confettiSides(280);
+    /* bunga tumbuh dari bawah */
+    bloomFlowerGarden();
+    /* confetti burst */
+    confettiSides(240);
+    /* teks wish */
     setTimeout(() => {
       const wt = $('wish-text');
       wt.style.display = 'block';
       requestAnimationFrame(() => requestAnimationFrame(() => wt.classList.add('show')));
-    }, 900);
+    }, 1100);
   }, total);
 }
 
