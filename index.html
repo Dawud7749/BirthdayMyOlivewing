@@ -266,6 +266,14 @@
       will-change: transform;
       backface-visibility: hidden;
     }
+    /* Freeze semua animasi screen1 saat transisi */
+    #screen1.frozen .fw-bloom,
+    #screen1.frozen .scatter,
+    #screen1.frozen .bub,
+    #screen1.frozen .sparkle,
+    #screen1.frozen .wave-strip svg {
+      animation-play-state: paused !important;
+    }
     .scatter svg { overflow: visible; display: block; }
     .scatter.s1  { top: 8%;   left: 5%;   width: 85px;  animation-delay: 0s;   animation-duration: 6s; }
     .scatter.s2  { top: 8%;   right: 5%;  width: 95px;  animation-delay: 1s;   animation-duration: 7s; }
@@ -2202,22 +2210,29 @@ function openEnvelope() {
   const hs = $('seal-hotspot');
   if (hs) hs.onclick = null;
 
-  /* Step 1: flap opens smoothly (transition already on element) */
-  const flap = $('env-flap');
+  /* Step 1: flap opens smoothly */
   requestAnimationFrame(() => {
-    flap.style.transform = 'scaleY(-1)';
+    $('env-flap').style.transform = 'scaleY(-1)';
   });
 
-  /* Step 2: burst + reveal after flap finishes (~900ms) */
+  /* Step 2: burst + reveal — dan PRE-SPAWN bunga screen2 di sini
+     (1.1 detik sebelum transisi, jadi browser sudah stabil saat curtain muncul) */
   setTimeout(() => {
     const box = $('env-box');
     const r   = box.getBoundingClientRect();
-    explode(r.left + r.width / 2, r.top + r.height * 0.6, 140);
+    explode(r.left + r.width / 2, r.top + r.height * 0.6, 100);
     triggerFlowerWallReveal();
+    spawnFlowers('fl2', 38);   /* pre-spawn sekarang, bukan saat curtain */
   }, 880);
 
-  /* Step 3: transition to screen 2 via curtain */
-  setTimeout(() => fadeTo('screen2'), 2000);
+  /* Step 3: freeze screen1 + stop canvas + transisi ke screen2 */
+  setTimeout(() => {
+    /* Hentikan canvas particles agar tidak bersaing dengan curtain */
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    /* Pause semua CSS animation screen1 — tidak perlu render lagi */
+    $('screen1').classList.add('frozen');
+    fadeTo('screen2');
+  }, 2000);
 }
 
 /* ----------------------------------------------------------------
@@ -2232,8 +2247,11 @@ function fadeTo(targetId, onSwitch) {
 
   const curtain = $('curtain');
 
-  /* Pre-spawn flowers BEFORE curtain so they're ready on reveal */
-  if (targetId === 'screen2') spawnFlowers('fl2', 45);
+  /* Spawn screen2 flowers HANYA jika belum di-pre-spawn oleh openEnvelope */
+  if (targetId === 'screen2') {
+    const fl2 = $('fl2');
+    if (!fl2 || !fl2.children.length) spawnFlowers('fl2', 38);
+  }
 
   /* 1 — Fade curtain IN */
   curtain.classList.add('show');
@@ -2684,7 +2702,7 @@ function blowCandles() {
 document.addEventListener('DOMContentLoaded', () => {
   $('screen1').classList.add('active');
   // 🌸 Spawn dense flower wall in background of Screen 1
-  spawnFlowerWall('fl1', 55);
+  spawnFlowerWall('fl1', 32);
   ['click','touchstart','keydown'].forEach(ev =>
     document.addEventListener(ev, startMusic, { once: true })
   );
