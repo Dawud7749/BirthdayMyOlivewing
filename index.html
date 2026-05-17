@@ -341,7 +341,10 @@
        ============================================================ */
     #pcanvas {
       position: fixed; inset: 0;
-      pointer-events: none; z-index: 9999;
+      pointer-events: none;
+      /* z-index 850: di atas modal (800) tapi DI BAWAH curtain (9500)
+         agar saat transisi, partikel tertutup curtain — tidak frozen di layar */
+      z-index: 850;
       width: 100%; height: 100%;
     }
 
@@ -2224,11 +2227,12 @@ function openEnvelope() {
     triggerFlowerWallReveal();
   }, 880);
 
-  /* Step 3: stop canvas + sembunyikan screen1 sepenuhnya, baru transisi */
+  /* Step 3: stop canvas + clear particles + sembunyikan screen1, lalu transisi */
   setTimeout(() => {
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-    /* visibility:hidden langsung hentikan semua painting screen1
-       (lebih efektif dari pause animation — compositor layer langsung dibuang) */
+    /* WAJIB: clear array + canvas, kalau tidak partikel terakhir akan frozen di layar */
+    particles = [];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     $('screen1').style.visibility = 'hidden';
     fadeTo('screen2');
   }, 2000);
@@ -2246,32 +2250,29 @@ function fadeTo(targetId, onSwitch) {
 
   const curtain = $('curtain');
 
-  /* 1 — Curtain fade IN dulu, tidak ada pekerjaan lain → murni smooth */
-  curtain.classList.add('show');
+  /* Spawn bunga dulu, beri browser 2 frame untuk proses,
+     lalu curtain mulai — curtain akan menutupi semua proses berat */
+  if (targetId === 'screen2') spawnFlowers('fl2', 25);
 
-  setTimeout(() => {
-    /* 2 — Curtain sekarang opaque, user tidak lihat apapun.
-           Lakukan semua pekerjaan berat di sini: switch screen + spawn bunga */
-    document.querySelectorAll('.screen, .modal')
-      .forEach(el => el.classList.remove('active'));
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    curtain.classList.add('show');
 
-    const t = $(targetId);
-    if (t) {
-      t.classList.add('active');
-      if (typeof t.scrollTop !== 'undefined') t.scrollTop = 0;
-    }
-    if (onSwitch) onSwitch();
-
-    /* Spawn bunga SAAT CURTAIN OPAQUE — user tidak tahu ada kerja keras di sini */
-    if (targetId === 'screen2') spawnFlowers('fl2', 25);
-
-    /* Beri browser 80ms untuk proses spawn, lalu curtain fade OUT */
     setTimeout(() => {
-      curtain.classList.remove('show');
-      setTimeout(() => { curtainBusy = false; }, 420);
-    }, 80);
+      document.querySelectorAll('.screen, .modal')
+        .forEach(el => el.classList.remove('active'));
+      const t = $(targetId);
+      if (t) {
+        t.classList.add('active');
+        if (typeof t.scrollTop !== 'undefined') t.scrollTop = 0;
+      }
+      if (onSwitch) onSwitch();
 
-  }, 400);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        curtain.classList.remove('show');
+        setTimeout(() => { curtainBusy = false; }, 420);
+      }));
+    }, 400);
+  }));
 }
 
 /* ---------------- NAVIGATION ---------------- */
