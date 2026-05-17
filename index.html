@@ -778,28 +778,10 @@
     /* ============================================================
        FLOWER GARDEN — bunga tumbuh dari bawah setelah lilin mati
        ============================================================ */
-    #flower-garden {
+    #garden-canvas {
       position: absolute; inset: 0;
-      pointer-events: none; overflow: visible; z-index: 5;
-    }
-    @keyframes flowerRise {
-      0%   { transform: translateY(120px) scale(0.05) rotate(var(--fr,0deg)); opacity: 0; }
-      22%  { opacity: 1; }
-      68%  { transform: translateY(-22px)  scale(1.12)  rotate(var(--fr,0deg)); }
-      84%  { transform: translateY(8px)    scale(0.95)  rotate(var(--fr,0deg)); }
-      100% { transform: translateY(0)      scale(1)     rotate(var(--fr,0deg)); opacity: 1; }
-    }
-    @keyframes gardenSway {
-      0%, 100% { transform: translateY(0)   scale(1) rotate(var(--fr,0deg)); }
-      50%       { transform: translateY(-9px) scale(1) rotate(calc(var(--fr,0deg) + 4deg)); }
-    }
-    .garden-flower {
-      position: absolute; bottom: 0;
-      will-change: transform, opacity;
-      animation-name: flowerRise, gardenSway;
-      animation-timing-function: cubic-bezier(0.22,1,0.36,1), ease-in-out;
-      animation-fill-mode: both, none;
-      animation-iteration-count: 1, infinite;
+      pointer-events: none; z-index: 5;
+      width: 100%; height: 100%;
     }
   </style>
 </head>
@@ -1584,7 +1566,7 @@
      MODAL 4C — CAKE
      ============================================================ -->
 <div id="modal-cake" class="modal">
-  <div id="flower-garden"></div>
+  <canvas id="garden-canvas"></canvas>
   <div class="cake-inner">
     <h2 class="cake-title">Happy 22nd Birthday, Cena</h2>
 
@@ -2078,47 +2060,340 @@ function initFlowerModal() {
   });
 }
 
-/* ---------------- FLOWER GARDEN (setelah lilin mati) ---------------- */
-const GARDEN_DEFS = [
-  { sym: 'sunflower', vb: '-15 -15 30 30', size: 115, x: 4  },
-  { sym: 'lily',      vb: '-20 -22 40 44', size: 138, x: 16 },
-  { sym: 'daisy',     vb: '-14 -14 28 28', size: 76,  x: 26 },
-  { sym: 'peony',     vb: '-15 -15 30 30', size: 108, x: 36 },
-  { sym: 'carnation', vb: '-16 -16 32 32', size: 96,  x: 48 },
-  { sym: 'lily',      vb: '-20 -22 40 44', size: 125, x: 59 },
-  { sym: 'anemone',   vb: '-15 -15 30 30', size: 100, x: 70 },
-  { sym: 'sunflower', vb: '-15 -15 30 30', size: 110, x: 80 },
-  { sym: 'bluebell',  vb: '-14 -16 28 32', size: 82,  x: 90 },
-  { sym: 'daisy',     vb: '-14 -14 28 28', size: 70,  x: 11 },
-  { sym: 'carnation', vb: '-16 -16 32 32', size: 78,  x: 54 },
-  { sym: 'peony',     vb: '-15 -15 30 30', size: 88,  x: 76 },
-];
+/* ================================================================
+   FLOWER GARDEN — Canvas realistic: stem grows → leaves → bloom
+   ================================================================ */
+
+function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+class GardenStem {
+  constructor(x, tipY, type, delayMs, W, H) {
+    this.x      = x;
+    this.baseY  = H + 8;
+    this.type   = type;
+    this.delay  = delayMs;
+
+    /* Bezier in local coords — origin = (x, baseY), up = -y */
+    const lean  = rand(-28, 28);
+    const h     = this.baseY - tipY;
+    this.h      = h;
+    this.cp1x   = lean * 0.12;  this.cp1y = -h * 0.26;
+    this.cp2x   = lean * 0.88;  this.cp2y = -h * 0.68;
+    this.tipX   = lean * 0.42;  this.tipY = -h;
+    this.stemW  = rand(4.5, 6.5);
+
+    /* Phase state */
+    this.phase  = 'waiting';
+    this.stemT  = 0;
+    this.leafT  = 0;
+    this.bloomT = 0;
+    this.swayT  = rand(0, Math.PI * 2);
+    this.swayF  = rand(0.30, 0.55);
+    this.swayDeg= rand(2.5, 5.0);
+
+    /* Leaves — alternate sides */
+    const s0 = Math.random() > .5 ? 1 : -1;
+    this.leaves = [
+      { t: rand(.28,.42), side:  s0, len: rand(30,46), progress: 0 },
+      { t: rand(.50,.64), side: -s0, len: rand(26,42), progress: 0 },
+      { t: rand(.70,.83), side:  s0, len: rand(22,36), progress: 0 },
+    ];
+  }
+
+  /* Cubic bezier point in local space */
+  bez(t) {
+    const m = 1 - t;
+    return {
+      x: 3*m*m*t*this.cp1x + 3*m*t*t*this.cp2x + t*t*t*this.tipX,
+      y: 3*m*m*t*this.cp1y + 3*m*t*t*this.cp2y + t*t*t*this.tipY
+    };
+  }
+  tangent(t) {
+    const e = .006, t2 = Math.min(t+e,1);
+    const a = this.bez(t), b = this.bez(t2);
+    return Math.atan2(b.y - a.y, b.x - a.x);
+  }
+
+  update(now, dt) {
+    if (this.phase === 'waiting') {
+      if (now >= this.delay) this.phase = 'stem';
+      return;
+    }
+    if (this.phase === 'stem') {
+      this.stemT = clamp01(this.stemT + dt / 1600);
+      if (this.stemT >= 1) this.phase = 'leaves';
+    } else if (this.phase === 'leaves') {
+      this.leafT = clamp01(this.leafT + dt / 1000);
+      this.leaves.forEach((l, i) => {
+        l.progress = clamp01((this.leafT - i * 0.26) * 2.5);
+      });
+      if (this.leafT >= 1) this.phase = 'bloom';
+    } else if (this.phase === 'bloom') {
+      this.bloomT = clamp01(this.bloomT + dt / 1300);
+      if (this.bloomT >= 1) this.phase = 'sway';
+    } else {
+      this.swayT += dt / 1000 * this.swayF;
+    }
+  }
+
+  draw(ctx) {
+    if (this.phase === 'waiting') return;
+    ctx.save();
+    ctx.translate(this.x, this.baseY);
+    if (this.phase === 'sway') {
+      ctx.rotate(Math.sin(this.swayT) * this.swayDeg * Math.PI / 180);
+    }
+    this._stem(ctx);
+    if (this.phase !== 'stem') this._leaves(ctx);
+    if (this.bloomT > 0)        this._flower(ctx);
+    ctx.restore();
+  }
+
+  _stem(ctx) {
+    const steps = 50, max = Math.ceil(steps * this.stemT);
+    if (!max) return;
+    ctx.save();
+    /* Main stem */
+    ctx.strokeStyle = '#3a6b38'; ctx.lineWidth = this.stemW;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    for (let i = 1; i <= max; i++) {
+      const p = this.bez((i / steps) * this.stemT);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+    /* Highlight stripe */
+    ctx.strokeStyle = 'rgba(130,200,120,.28)'; ctx.lineWidth = this.stemW * .38;
+    ctx.beginPath(); ctx.moveTo(-1, 0);
+    for (let i = 1; i <= max; i++) {
+      const p = this.bez((i / steps) * this.stemT);
+      ctx.lineTo(p.x - 1, p.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  _leaves(ctx) {
+    this.leaves.forEach(l => {
+      if (l.progress <= 0 || this.stemT < l.t - .02) return;
+      const pt  = this.bez(Math.min(l.t, this.stemT));
+      const ang = this.tangent(Math.min(l.t, this.stemT));
+      /* Perpendicular to stem, angled slightly upward */
+      const leafAng = ang + l.side * (Math.PI * .5 - .22);
+      const len = l.len * easeOutBack(l.progress);
+      const wid = len * .34;
+
+      ctx.save();
+      ctx.translate(pt.x, pt.y);
+      ctx.rotate(leafAng);
+
+      /* Leaf fill */
+      const g = ctx.createLinearGradient(0, 0, wid * .5, -len);
+      g.addColorStop(0, '#3d7a3a');
+      g.addColorStop(.5, '#52a04e');
+      g.addColorStop(1, '#3d7a3a');
+      ctx.fillStyle = g;
+      ctx.strokeStyle = '#296628'; ctx.lineWidth = .9;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo( wid, -len*.28,  wid*.78, -len*.82, 0, -len);
+      ctx.bezierCurveTo(-wid*.28, -len*.80, -wid*.14, -len*.28, 0, 0);
+      ctx.fill(); ctx.stroke();
+      /* Midrib */
+      ctx.strokeStyle = 'rgba(40,100,38,.5)'; ctx.lineWidth = .7;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(wid*.12, -len*.36, wid*.06, -len*.68, 0, -len);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  _flower(ctx) {
+    const tip = this.bez(this.stemT);
+    ctx.save();
+    ctx.translate(tip.x, tip.y);
+    const p = easeOutCubic(this.bloomT);
+    if      (this.type === 'sunflower') this._sunflower(ctx, p);
+    else if (this.type === 'rose')      this._rose(ctx, p);
+    else                                this._lily(ctx, p);
+    ctx.restore();
+  }
+
+  _sunflower(ctx, p) {
+    const R = 52 * p, n = 18;
+    for (let i = 0; i < n; i++) {
+      const pp = clamp01(p * n * .7 - i * .32);
+      if (!pp) continue;
+      ctx.save();
+      ctx.rotate((i / n) * Math.PI * 2);
+      ctx.fillStyle  = i % 2 ? '#E8A800' : '#F7C819';
+      ctx.strokeStyle = 'rgba(58,46,34,.5)'; ctx.lineWidth = .7;
+      const r = R * pp, w = 7 * pp;
+      ctx.beginPath();
+      ctx.moveTo(0, -4);
+      ctx.bezierCurveTo(-w, -r*.32, -w*.8, -r*.92, 0, -r - R*.1);
+      ctx.bezierCurveTo( w*.8, -r*.92,  w,  -r*.32, 0, -4);
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+    /* Center */
+    const cr = 20 * Math.min(1, p * 2);
+    ctx.fillStyle = '#1E0A00'; ctx.beginPath(); ctx.arc(0,0,cr,0,Math.PI*2); ctx.fill();
+    if (cr > 9) {
+      for (let i = 0; i < 20; i++) {
+        const a = i * 2.51, r2 = (i/20) * cr * .72;
+        ctx.fillStyle = '#4A1800'; ctx.beginPath();
+        ctx.arc(Math.cos(a)*r2, Math.sin(a)*r2, 1.4, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    /* Pollen ring */
+    if (p > .7) {
+      const yp = clamp01((p - .7) * 3.3);
+      ctx.strokeStyle = `rgba(246,227,163,${yp*.7})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, cr + 3, 0, Math.PI*2); ctx.stroke();
+    }
+  }
+
+  _rose(ctx, p) {
+    const layers = [
+      { n:5, r:13, c1:'#B03858', c2:'#8C2040' },
+      { n:6, r:23, c1:'#C85070', c2:'#A83858' },
+      { n:7, r:35, c1:'#D47090', c2:'#BC5878' },
+      { n:8, r:47, c1:'#E88098', c2:'#D06888' },
+      { n:9, r:58, c1:'#F9B8C4', c2:'#E890A0' },
+    ];
+    layers.forEach((lay, li) => {
+      const lp = clamp01(p * 5 - li * .72);
+      if (!lp) return;
+      for (let i = 0; i < lay.n; i++) {
+        const a = (i / lay.n) * Math.PI * 2 + li * .30;
+        ctx.save(); ctx.rotate(a);
+        ctx.fillStyle  = i%2 ? lay.c1 : lay.c2;
+        ctx.strokeStyle = 'rgba(58,46,34,.28)'; ctx.lineWidth = .5;
+        const r = lay.r * lp, w = r * .46;
+        ctx.beginPath(); ctx.moveTo(0,0);
+        ctx.bezierCurveTo(-w,-r*.18,-w*.86,-r*.88, 0,-r);
+        ctx.bezierCurveTo( w*.86,-r*.88, w,-r*.18, 0, 0);
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+    });
+    /* Stamen */
+    const sc = 7 * Math.min(1, p*4);
+    ctx.fillStyle = '#F6E3A3'; ctx.beginPath(); ctx.arc(0,0,sc,0,Math.PI*2); ctx.fill();
+  }
+
+  _lily(ctx, p) {
+    const cols = ['#FDF6EE','#F9C8D8','#FDF6EE','#E8839A','#FDF6EE','#F9C8D8'];
+    const R = 54;
+    for (let i = 0; i < 6; i++) {
+      const pp = clamp01(p * 6 - i * .42);
+      if (!pp) continue;
+      ctx.save(); ctx.rotate((i/6)*Math.PI*2);
+      ctx.fillStyle  = cols[i];
+      ctx.strokeStyle = 'rgba(58,46,34,.55)'; ctx.lineWidth = .9;
+      const r = R * pp, w = r * .30;
+      ctx.beginPath(); ctx.moveTo(0,0);
+      ctx.bezierCurveTo(-w,-r*.12,-w*.8,-r*.88,0,-r);
+      ctx.bezierCurveTo( w*.8,-r*.88, w,-r*.12, 0, 0);
+      ctx.fill(); ctx.stroke();
+      if (pp > .55) {
+        ctx.fillStyle = 'rgba(200,80,110,.38)';
+        ctx.beginPath(); ctx.arc(-w*.1,-r*.52,1.8,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc( w*.15,-r*.68,1.2,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+    /* Stamens */
+    if (p > .55) {
+      const sp = clamp01((p-.55)*2.2);
+      for (let i = 0; i < 6; i++) {
+        ctx.save(); ctx.rotate((i/6)*Math.PI*2 + .28);
+        ctx.strokeStyle = '#3A2E22'; ctx.lineWidth = 1;
+        const slen = R * .55 * sp;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-slen); ctx.stroke();
+        ctx.fillStyle = '#F6E3A3'; ctx.strokeStyle = '#9B72B8'; ctx.lineWidth = .6;
+        ctx.beginPath(); ctx.ellipse(0,-slen,2.8,1.4,.4,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+    }
+    const gc2 = 5 * Math.min(1, p*2);
+    ctx.fillStyle = '#6D8A6D'; ctx.beginPath(); ctx.arc(0,0,gc2,0,Math.PI*2); ctx.fill();
+  }
+}
+
+/* ---- Garden animation loop ---- */
+let gardenStems  = [];
+let gardenRafId  = null;
+let gardenLastMs = 0;
+
+function gardenTick(now) {
+  const dt = gardenLastMs ? Math.min(now - gardenLastMs, 50) : 16;
+  gardenLastMs = now;
+  const gc = $('garden-canvas');
+  if (!gc) return;
+  const ctx = gc.getContext('2d');
+  ctx.clearRect(0, 0, gc.width, gc.height);
+  gardenStems.forEach(s => { s.update(now, dt); s.draw(ctx); });
+  gardenRafId = requestAnimationFrame(gardenTick);
+}
 
 function bloomFlowerGarden() {
-  const garden = $('flower-garden');
-  if (!garden) return;
-  garden.innerHTML = '';
-  const frag = document.createDocumentFragment();
+  const gc = $('garden-canvas');
+  if (!gc) return;
+  if (gardenRafId) { cancelAnimationFrame(gardenRafId); gardenRafId = null; }
 
-  GARDEN_DEFS.forEach((f, i) => {
-    const el  = document.createElement('div');
-    const rot = rand(-14, 14);
-    const riseDur  = 1.4 + rand(0, 0.35);
-    const riseDelay = i * 0.10 + rand(0, 0.04);
-    const swayDur  = 3.2 + rand(0, 2.2);
-    const swayDelay = riseDelay + riseDur;
+  gc.width  = window.innerWidth;
+  gc.height = window.innerHeight;
+  const W = gc.width, H = gc.height;
+  gardenStems = []; gardenLastMs = 0;
 
-    el.className = 'garden-flower';
-    el.style.cssText =
-      `left:${f.x + rand(-1.5, 1.5)}%;` +
-      `--fr:${rot}deg;` +
-      `animation-duration:${riseDur}s,${swayDur}s;` +
-      `animation-delay:${riseDelay}s,${swayDelay}s;`;
-    el.innerHTML = `<svg width="${f.size}" height="${f.size}" viewBox="${f.vb}" xmlns="http://www.w3.org/2000/svg" overflow="visible"><use href="#sym-${f.sym}"/></svg>`;
-    frag.appendChild(el);
+  /* Aim for the cake base level */
+  let cakeTopY = H * .40;
+  const ci = document.querySelector('#modal-cake .cake-inner');
+  if (ci) { const r = ci.getBoundingClientRect(); cakeTopY = r.top + r.height * .58; }
+
+  const now = performance.now();
+
+  /* Tall flowers — reach cake level */
+  const tall = [
+    {xf:.04,type:'sunflower'},{xf:.15,type:'lily'},{xf:.27,type:'rose'},
+    {xf:.38,type:'sunflower'},{xf:.50,type:'lily'},{xf:.62,type:'rose'},
+    {xf:.73,type:'sunflower'},{xf:.84,type:'lily'},{xf:.94,type:'rose'},
+  ];
+  /* Medium flowers — slightly shorter, fill gaps */
+  const mid = [
+    {xf:.09,type:'rose'},{xf:.21,type:'sunflower'},{xf:.33,type:'lily'},
+    {xf:.44,type:'rose'},{xf:.56,type:'sunflower'},{xf:.68,type:'lily'},
+    {xf:.79,type:'rose'},{xf:.90,type:'sunflower'},
+  ];
+
+  tall.forEach((f,i) => {
+    gardenStems.push(new GardenStem(
+      W*f.xf + rand(-7,7),
+      cakeTopY + rand(-15,25),
+      f.type,
+      now + i*140 + rand(0,55),
+      W, H
+    ));
+  });
+  mid.forEach((f,i) => {
+    gardenStems.push(new GardenStem(
+      W*f.xf + rand(-6,6),
+      cakeTopY + rand(45,90),
+      f.type,
+      now + 220 + i*110 + rand(0,50),
+      W, H
+    ));
   });
 
-  garden.appendChild(frag);
+  gardenRafId = requestAnimationFrame(gardenTick);
 }
 
 /* ---------------- CAKE MODAL ---------------- */
@@ -2134,9 +2409,11 @@ function resetCake() {
   const wt = $('wish-text');
   wt.classList.remove('show');
   wt.style.display = 'none';
-  /* bersihkan taman bunga */
-  const garden = $('flower-garden');
-  if (garden) garden.innerHTML = '';
+  /* bersihkan garden canvas */
+  if (gardenRafId) { cancelAnimationFrame(gardenRafId); gardenRafId = null; }
+  gardenStems = [];
+  const gc = $('garden-canvas');
+  if (gc) { const ctx2 = gc.getContext('2d'); ctx2.clearRect(0,0,gc.width,gc.height); }
 }
 
 function blowCandles() {
