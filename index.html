@@ -2354,20 +2354,23 @@ function bloomFlowerGarden() {
   const W = gc.width, H = gc.height;
   gardenStems = []; gardenLastMs = 0;
 
-  /* Aim for the cake base level */
-  let cakeTopY = H * .40;
-  const ci = document.querySelector('#modal-cake .cake-inner');
-  if (ci) { const r = ci.getBoundingClientRect(); cakeTopY = r.top + r.height * .58; }
+  /* Tip bunga harus di BAWAH dasar kue — ambil bottom of #cake-wrap */
+  let floorY = H * 0.70;   /* fallback 70% dari atas */
+  const cakeWrapEl = $('cake-wrap');
+  if (cakeWrapEl) {
+    const r = cakeWrapEl.getBoundingClientRect();
+    floorY = r.bottom + 18; /* tepat di bawah piring kue */
+  }
 
   const now = performance.now();
 
-  /* Tall flowers — reach cake level */
+  /* Bunga tinggi — ujung tepat di bawah kue */
   const tall = [
     {xf:.04,type:'sunflower'},{xf:.15,type:'lily'},{xf:.27,type:'rose'},
     {xf:.38,type:'sunflower'},{xf:.50,type:'lily'},{xf:.62,type:'rose'},
     {xf:.73,type:'sunflower'},{xf:.84,type:'lily'},{xf:.94,type:'rose'},
   ];
-  /* Medium flowers — slightly shorter, fill gaps */
+  /* Bunga sedang — lebih pendek, isi celah */
   const mid = [
     {xf:.09,type:'rose'},{xf:.21,type:'sunflower'},{xf:.33,type:'lily'},
     {xf:.44,type:'rose'},{xf:.56,type:'sunflower'},{xf:.68,type:'lily'},
@@ -2377,7 +2380,7 @@ function bloomFlowerGarden() {
   tall.forEach((f,i) => {
     gardenStems.push(new GardenStem(
       W*f.xf + rand(-7,7),
-      cakeTopY + rand(-15,25),
+      floorY + rand(-8, 18),    /* sekitar garis bawah kue */
       f.type,
       now + i*140 + rand(0,55),
       W, H
@@ -2386,7 +2389,7 @@ function bloomFlowerGarden() {
   mid.forEach((f,i) => {
     gardenStems.push(new GardenStem(
       W*f.xf + rand(-6,6),
-      cakeTopY + rand(45,90),
+      floorY + rand(35, 70),    /* lebih pendek, tidak akan menutupi kue */
       f.type,
       now + 220 + i*110 + rand(0,50),
       W, H
