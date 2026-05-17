@@ -165,14 +165,11 @@
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       opacity: 0; pointer-events: none;
-      transform: scale(0.985);
-      transition: opacity 0.9s cubic-bezier(0.22,1,0.36,1),
-                  transform 0.9s cubic-bezier(0.22,1,0.36,1);
+      transition: opacity 0.1s linear;
       overflow: hidden;
       z-index: 2;
-      will-change: opacity, transform;
     }
-    .screen.active { opacity: 1; pointer-events: all; transform: scale(1); }
+    .screen.active { opacity: 1; pointer-events: all; }
 
     /* ============================================================
        KEYFRAMES
@@ -538,13 +535,24 @@
       position: fixed; inset: 0; z-index: 800;
       display: flex; flex-direction: column; align-items: center;
       opacity: 0; pointer-events: none;
-      transform: translateY(10px);
-      transition: opacity 0.65s cubic-bezier(0.22,1,0.36,1),
-                  transform 0.65s cubic-bezier(0.22,1,0.36,1);
+      transition: opacity 0.1s linear;
       overflow-y: auto; -webkit-overflow-scrolling: touch;
-      will-change: opacity, transform;
     }
-    .modal.active { opacity: 1; pointer-events: all; transform: translateY(0); }
+    .modal.active { opacity: 1; pointer-events: all; }
+
+    /* ============================================================
+       CURTAIN — smooth page transition overlay
+       ============================================================ */
+    #curtain {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #FFF8F5 0%, #FFE8D6 45%, #FFF0F8 100%);
+      z-index: 9500;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.38s cubic-bezier(0.4,0,0.2,1);
+      will-change: opacity;
+    }
+    #curtain.show { opacity: 1; pointer-events: all; }
 
     /* ============================================================
        MODAL 4A — SURAT  (Rule of Thirds: header 1/3 top, body 2/3)
@@ -1678,6 +1686,9 @@
      ============================================================ -->
 <div id="flower-wall-reveal"></div>
 
+<!-- Curtain transition overlay -->
+<div id="curtain"></div>
+
 <!-- ============================================================
      CANVAS PARTICLES — global overlay
      ============================================================ -->
@@ -1952,41 +1963,63 @@ function openEnvelope() {
     triggerFlowerWallReveal();
   }, 880);
 
-  /* Step 3: transition to screen 2 */
-  setTimeout(() => showScreen('screen2'), 2200);
+  /* Step 3: transition to screen 2 via curtain */
+  setTimeout(() => fadeTo('screen2'), 2000);
+}
+
+/* ----------------------------------------------------------------
+   CURTAIN TRANSITION — cream overlay hides the switch completely
+   Flow: fade-in curtain → switch content (hidden) → fade-out
+   ---------------------------------------------------------------- */
+let curtainBusy = false;
+
+function fadeTo(targetId, onSwitch) {
+  if (curtainBusy) return;
+  curtainBusy = true;
+
+  const curtain = $('curtain');
+
+  /* Pre-spawn flowers BEFORE curtain so they're ready on reveal */
+  if (targetId === 'screen2') spawnFlowers('fl2', 45);
+
+  /* 1 — Fade curtain IN */
+  curtain.classList.add('show');
+
+  setTimeout(() => {
+    /* 2 — Switch while hidden */
+    document.querySelectorAll('.screen, .modal')
+      .forEach(el => el.classList.remove('active'));
+
+    const t = $(targetId);
+    if (t) {
+      t.classList.add('active');
+      if (typeof t.scrollTop !== 'undefined') t.scrollTop = 0;
+    }
+    if (onSwitch) onSwitch();
+
+    /* 3 — Two rAFs: first commits the DOM change, second paints it,
+           then we start fading out so there is zero flash */
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      curtain.classList.remove('show');
+      /* unlock after fade-out completes (380ms) */
+      setTimeout(() => { curtainBusy = false; }, 400);
+    }));
+  }, 400);
 }
 
 /* ---------------- NAVIGATION ---------------- */
-function showScreen(id) {
-  document.querySelectorAll('.screen, .modal').forEach(el => el.classList.remove('active'));
-  const t = $(id);
-  if (!t) return;
-  /* tiny rAF gap so the browser paints the remove before adding active */
-  requestAnimationFrame(() => {
-    t.classList.add('active');
-    if (id === 'screen2') spawnFlowers('fl2', 55);
-  });
-}
-function goToScreen3() {
-  startMusic();
-  showScreen('screen3');
-}
+function showScreen(id)  { fadeTo(id); }
+function goToScreen3()   { startMusic(); fadeTo('screen3'); }
 
 /* ---------------- MODAL SYSTEM ---------------- */
 function openModal(type) {
   startMusic();
-  document.querySelectorAll('.screen, .modal').forEach(el => el.classList.remove('active'));
-  const m = $('modal-' + type);
-  if (!m) return;
-  m.classList.add('active');
-  m.scrollTop = 0;
-  if (type === 'flower') initFlowerModal();
-  if (type === 'cake')   resetCake();
+  fadeTo('modal-' + type, () => {
+    if (type === 'flower') initFlowerModal();
+    if (type === 'cake')   resetCake();
+  });
 }
-function closeModal() {
-  document.querySelectorAll('.modal').forEach(el => el.classList.remove('active'));
-  showScreen('screen3');
-}
+function closeModal() { fadeTo('screen3'); }
 
 /* ---------------- FLOWER MODAL ---------------- */
 function initFlowerModal() {
