@@ -544,24 +544,26 @@
        ============================================================ */
     #modal-message {
       background:
-        linear-gradient(160deg, #FDF6EE 0%, #FFE8D6 45%, #FFD6C8 100%);
-      padding: 0;
+        linear-gradient(160deg, #FFF5F8 0%, #FFE8D6 35%, #FFD6C8 65%, #FFF0F8 100%);
+      padding: 56px 20px 40px;
       justify-content: center;
       align-items: center;
     }
-    /* Flower deco corners on modal background */
+    /* Lush floral wash di background modal */
     #modal-message::before {
       content: '';
       position: absolute; inset: 0;
       background:
-        radial-gradient(circle at 15% 15%, rgba(249,184,196,0.35) 0%, transparent 40%),
-        radial-gradient(circle at 85% 85%, rgba(201,168,212,0.3) 0%, transparent 40%),
-        radial-gradient(circle at 80% 10%, rgba(246,227,163,0.25) 0%, transparent 30%);
+        radial-gradient(circle at 10% 10%, rgba(249,184,196,0.45) 0%, transparent 35%),
+        radial-gradient(circle at 90% 90%, rgba(201,168,212,0.4)  0%, transparent 35%),
+        radial-gradient(circle at 85% 8%,  rgba(246,227,163,0.35) 0%, transparent 28%),
+        radial-gradient(circle at 12% 88%, rgba(143,169,143,0.25) 0%, transparent 30%),
+        radial-gradient(circle at 50% 50%, rgba(255,214,200,0.18) 0%, transparent 60%);
       pointer-events: none;
     }
     .letter-paper {
       background: linear-gradient(170deg, #FFFAF6 0%, #FFF0F4 50%, #FFFAF6 100%);
-      max-width: 580px; width: calc(100% - 32px);
+      width: 100%;
       max-height: 88vh;
       border: 2px solid var(--ink);
       border-radius: 4px;
@@ -586,7 +588,6 @@
     }
     @media (max-width: 480px) {
       .letter-paper {
-        width: calc(100% - 24px);
         padding: 32px 20px 28px;
         max-height: 90vh;
       }
@@ -605,12 +606,37 @@
       pointer-events: none;
     }
 
-    /* Deco flowers on corners of paper */
-    .ltr-deco { position: absolute; z-index: 2; pointer-events: none; }
-    .ltr-deco.tl { top: 12px; left: 12px; width: 52px; opacity: 0.7; }
-    .ltr-deco.tr { top: 12px; right: 12px; width: 44px; opacity: 0.6; transform: rotate(30deg); }
-    .ltr-deco.br { bottom: 68px; right: 12px; width: 52px; opacity: 0.65; transform: rotate(180deg); }
-    .ltr-deco.bl { bottom: 68px; left: 12px; width: 44px; opacity: 0.55; transform: rotate(-30deg); }
+    /* ============================================================
+       LETTER FRAME — wrapper agar bunga tidak terpotong scroll
+       ============================================================ */
+    .letter-frame {
+      position: relative;
+      width: calc(100% - 32px);
+      max-width: 580px;
+      margin: auto;
+    }
+    @media (max-width: 480px) { .letter-frame { width: calc(100% - 20px); } }
+
+    /* Deco bunga — posisi relatif ke .letter-frame, bisa menonjol keluar */
+    .ltr-deco { position: absolute; z-index: 10; pointer-events: none; }
+    .ltr-deco.tl { top: -44px; left: -44px; width: 110px; opacity: 0.95; }
+    .ltr-deco.tr { top: -44px; right: -44px; width: 96px;  opacity: 0.92; }
+    .ltr-deco.bl { bottom: 44px; left: -44px; width: 96px;  opacity: 0.90; transform: rotate(-18deg); }
+    .ltr-deco.br { bottom: 44px; right: -44px; width: 110px; opacity: 0.92; transform: rotate(18deg); }
+    .ltr-deco.ml { top: 30%; left: -50px; width: 80px; opacity: 0.75; transform: rotate(-12deg); animation: drift 7s ease-in-out infinite; }
+    .ltr-deco.mr { top: 58%; right: -50px; width: 80px; opacity: 0.75; transform: rotate(12deg); animation: drift 9s ease-in-out infinite 1.5s; }
+
+    /* Background scatter flowers di balik letter */
+    .msg-bg-flower {
+      position: absolute; pointer-events: none;
+      animation: drift 10s ease-in-out infinite;
+    }
+
+    /* Inline flower divider antar paragraf */
+    .ltr-divider {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; margin: 0.25em 0; opacity: 0.5;
+    }
 
     .letter-body {
       font-family: 'Lora', serif;
@@ -1200,79 +1226,183 @@
      MODAL 4A — SURAT
      ============================================================ -->
 <div id="modal-message" class="modal">
-  <div class="letter-paper">
 
+  <!-- Bunga scatter di background modal -->
+  <div class="msg-bg-flower" style="top:4%;left:3%;width:72px;opacity:0.15;animation-duration:11s;animation-delay:0s;">
+    <svg viewBox="-15 -15 30 30" width="100%" overflow="visible"><use href="#sym-peony"/></svg>
+  </div>
+  <div class="msg-bg-flower" style="top:6%;right:4%;width:60px;opacity:0.12;animation-duration:9s;animation-delay:2s;">
+    <svg viewBox="-14 -14 28 28" width="100%" overflow="visible"><use href="#sym-daisy"/></svg>
+  </div>
+  <div class="msg-bg-flower" style="bottom:5%;left:5%;width:68px;opacity:0.14;animation-duration:13s;animation-delay:1s;">
+    <svg viewBox="-15 -16 30 32" width="100%" overflow="visible"><use href="#sym-bluebell"/></svg>
+  </div>
+  <div class="msg-bg-flower" style="bottom:6%;right:6%;width:64px;opacity:0.13;animation-duration:10s;animation-delay:3s;">
+    <svg viewBox="-16 -16 32 32" width="100%" overflow="visible"><use href="#sym-carnation"/></svg>
+  </div>
+  <div class="msg-bg-flower" style="top:30%;left:1%;width:52px;opacity:0.10;animation-duration:14s;animation-delay:0.5s;">
+    <svg viewBox="-15 -15 30 30" width="100%" overflow="visible"><use href="#sym-sunflower"/></svg>
+  </div>
+  <div class="msg-bg-flower" style="top:55%;right:1%;width:56px;opacity:0.10;animation-duration:12s;animation-delay:4s;">
+    <svg viewBox="-15 -15 30 30" width="100%" overflow="visible"><use href="#sym-anemone"/></svg>
+  </div>
+  <div class="msg-bg-flower" style="top:18%;left:8%;width:44px;opacity:0.09;animation-duration:8s;animation-delay:1.5s;">
+    <svg viewBox="-14 -14 28 28" width="100%" overflow="visible"><use href="#sym-daisy"/></svg>
+  </div>
+  <div class="msg-bg-flower" style="bottom:22%;right:8%;width:48px;opacity:0.09;animation-duration:11s;animation-delay:2.5s;">
+    <svg viewBox="-15 -15 30 30" width="100%" overflow="visible"><use href="#sym-peony"/></svg>
+  </div>
+
+  <!-- Letter frame: bunga pojok TIDAK terpotong karena di luar scroll -->
+  <div class="letter-frame">
+
+    <!-- Sudut kiri atas: bluebell + leaf cluster -->
     <div class="ltr-deco tl">
-      <svg viewBox="-15 -16 30 32" width="100%"><use href="#sym-bluebell"/></svg>
+      <svg viewBox="0 0 110 110" width="100%" overflow="visible">
+        <g transform="translate(62,62)"><use href="#sym-bluebell" width="60" height="66" x="-30" y="-33"/></g>
+        <g transform="translate(30,40) rotate(-35)"><use href="#sym-leaf" width="52" height="24"/></g>
+        <g transform="translate(85,30)"><use href="#sym-daisy" width="32" height="32" x="-16" y="-16"/></g>
+        <circle cx="20" cy="22" r="3" fill="#F5F0E8" stroke="#3A2E22" stroke-width="0.8"/>
+        <circle cx="28" cy="16" r="2" fill="#F9B8C4" stroke="#3A2E22" stroke-width="0.7"/>
+      </svg>
     </div>
+
+    <!-- Sudut kanan atas: carnation + leaf -->
     <div class="ltr-deco tr">
-      <svg viewBox="-14 -14 28 28" width="100%"><use href="#sym-daisy"/></svg>
+      <svg viewBox="0 0 96 96" width="100%" overflow="visible">
+        <g transform="translate(34,62)"><use href="#sym-carnation" width="56" height="56" x="-28" y="-28"/></g>
+        <g transform="translate(10,32) rotate(-20) scale(-1,1)"><use href="#sym-leaf" width="48" height="22"/></g>
+        <g transform="translate(72,28)"><use href="#sym-daisy" width="28" height="28" x="-14" y="-14"/></g>
+        <circle cx="80" cy="18" r="2.5" fill="#F6E3A3" stroke="#3A2E22" stroke-width="0.7"/>
+      </svg>
     </div>
-    <div class="ltr-deco br">
-      <svg viewBox="-15 -15 30 30" width="100%"><use href="#sym-carnation"/></svg>
-    </div>
+
+    <!-- Sudut kiri bawah: peony -->
     <div class="ltr-deco bl">
-      <svg viewBox="-15 -15 30 30" width="100%"><use href="#sym-peony"/></svg>
+      <svg viewBox="0 0 96 96" width="100%" overflow="visible">
+        <g transform="translate(58,34)"><use href="#sym-peony" width="54" height="54" x="-27" y="-27"/></g>
+        <g transform="translate(18,62) rotate(25)"><use href="#sym-leaf" width="46" height="21"/></g>
+        <circle cx="16" cy="78" r="2.5" fill="#F9B8C4" stroke="#3A2E22" stroke-width="0.7"/>
+        <circle cx="24" cy="84" r="2" fill="#E8839A" stroke="#3A2E22" stroke-width="0.6"/>
+      </svg>
     </div>
 
-    <div class="letter-body">
-      <p>untuk avicena,</p>
-
-      <p>di hari ketika usiamu bertambah,<br>
-      semoga hatimu juga belajar tumbuh lebih tenang.<br>
-      Semoga yang selama ini terasa berat,<br>
-      perlahan menjadi beban yang lebih ringan untuk kamu pegang.</p>
-
-      <p>semoga di usia yang baru ini,<br>
-      kamu pelan-pelan mulai menyadari bahwa dirimu jauh lebih berharga<br>
-      dari semua keraguan yang sering kamu percayai.</p>
-
-      <p>bahwa nilai seseorang tidak ditentukan<br>
-      dari seberapa kuat ia terlihat,<br>
-      atau seberapa jarang ia menangis,</p>
-
-      <p>dan kamu, dengan hati selembut itu,<br>
-      bukan seseorang yang lemah.<br>
-      kamu hanya seseorang yang merasakan lebih dalam,<br>
-      dan itu bukan sesuatu yang perlu kamu sembunyikan.</p>
-
-      <p>aku tahu, kamu sering merasa terlalu sensitif pada dunia.<br>
-      mudah terharu, mudah iba, mudah menangis.<br>
-      tapi itu bukan kekurangan.<br>
-      itu tanda bahwa hatimu masih utuh dan masih memilih untuk peduli.</p>
-
-      <p>bahwa di tengah dunia yang sering membuat orang mati rasa,<br>
-      kamu masih bisa merasakan dengan begitu dalam.<br>
-      masih bisa menangis untuk orang lain,<br>
-      masih bisa peduli meski sering kali ikut terluka karenanya.</p>
-
-      <p>semoga bertambahnya usia ini<br>
-      bukan sekadar angka yang berganti,<br>
-      tapi ruang baru untuk kamu berdamai<br>
-      dengan diri yang selama ini kamu hakimi sendiri.</p>
-
-      <p>semoga kamu mulai belajar berlaku adil,<br>
-      pada diri yang sudah berjalan sejauh ini.<br>
-      yang lelah bukan karena lemah,<br>
-      tapi karena terlalu lama menanggung sendiri.</p>
-
-      <p>semoga banyak hal baik datang menghampirimu.<br>
-      bukan yang sekadar memberimu bahagia,<br>
-      tapi yang juga memberimu makna.</p>
-
-      <p>dan kalau nanti dunia terasa terlalu berat,<br>
-      semoga kamu ingat<br>
-      tidak apa-apa menjadi seseorang yang lembut.<br>
-      tidak apa-apa menangis, tidak apa-apa merasa rapuh.<br>
-      karena bahkan hati yang paling tangguh pun, tetap butuh ruang untuk merasa.</p>
-
-      <p>selamat menapaki 22, Avicena.<br>
-      tolong hidup lebih lama, dan tolong belajar lebih percaya<br>
-      bahwa dirimu pantas dicintai, termasuk oleh dirimu sendiri.</p>
+    <!-- Sudut kanan bawah: sunflower + anemone -->
+    <div class="ltr-deco br">
+      <svg viewBox="0 0 110 110" width="100%" overflow="visible">
+        <g transform="translate(48,42)"><use href="#sym-sunflower" width="58" height="58" x="-29" y="-29"/></g>
+        <g transform="translate(88,78) rotate(15) scale(-1,1)"><use href="#sym-leaf" width="46" height="21"/></g>
+        <g transform="translate(22,80)"><use href="#sym-anemone" width="34" height="34" x="-17" y="-17"/></g>
+        <circle cx="90" cy="90" r="2.5" fill="#F6E3A3" stroke="#3A2E22" stroke-width="0.7"/>
+      </svg>
     </div>
 
-    <div class="letter-foot">
-      <button class="back-btn" onclick="closeModal()">← back to your gifts</button>
+    <!-- Bunga sisi kiri tengah -->
+    <div class="ltr-deco ml">
+      <svg viewBox="0 0 80 80" width="100%" overflow="visible">
+        <g transform="translate(40,30)"><use href="#sym-lily" width="44" height="48" x="-22" y="-24"/></g>
+        <g transform="translate(12,55) rotate(-20)"><use href="#sym-leaf" width="36" height="16"/></g>
+      </svg>
+    </div>
+
+    <!-- Bunga sisi kanan tengah -->
+    <div class="ltr-deco mr">
+      <svg viewBox="0 0 80 80" width="100%" overflow="visible">
+        <g transform="translate(40,30)"><use href="#sym-anemone" width="44" height="44" x="-22" y="-22"/></g>
+        <g transform="translate(48,55) rotate(20) scale(-1,1)"><use href="#sym-leaf" width="36" height="16"/></g>
+      </svg>
+    </div>
+
+    <div class="letter-paper">
+      <div class="letter-body">
+        <p>🌸 untuk avicena,</p>
+
+        <p>di hari ketika usiamu bertambah,<br>
+        semoga hatimu juga belajar tumbuh lebih tenang.<br>
+        Semoga yang selama ini terasa berat,<br>
+        perlahan menjadi beban yang lebih ringan untuk kamu pegang.</p>
+
+        <div class="ltr-divider">
+          <svg viewBox="-14 -14 28 28" width="22" height="22" overflow="visible"><use href="#sym-daisy"/></svg>
+          <svg viewBox="-16 -16 32 32" width="18" height="18" overflow="visible"><use href="#sym-carnation"/></svg>
+          <svg viewBox="-14 -14 28 28" width="22" height="22" overflow="visible"><use href="#sym-daisy"/></svg>
+        </div>
+
+        <p>semoga di usia yang baru ini,<br>
+        kamu pelan-pelan mulai menyadari bahwa dirimu jauh lebih berharga<br>
+        dari semua keraguan yang sering kamu percayai.</p>
+
+        <p>bahwa nilai seseorang tidak ditentukan<br>
+        dari seberapa kuat ia terlihat,<br>
+        atau seberapa jarang ia menangis,</p>
+
+        <div class="ltr-divider">
+          <svg viewBox="-15 -15 30 30" width="20" height="20" overflow="visible"><use href="#sym-peony"/></svg>
+          <svg viewBox="-15 -16 30 32" width="18" height="20" overflow="visible"><use href="#sym-bluebell"/></svg>
+          <svg viewBox="-15 -15 30 30" width="20" height="20" overflow="visible"><use href="#sym-peony"/></svg>
+        </div>
+
+        <p>dan kamu, dengan hati selembut itu,<br>
+        bukan seseorang yang lemah.<br>
+        kamu hanya seseorang yang merasakan lebih dalam,<br>
+        dan itu bukan sesuatu yang perlu kamu sembunyikan.</p>
+
+        <p>aku tahu, kamu sering merasa terlalu sensitif pada dunia.<br>
+        mudah terharu, mudah iba, mudah menangis.<br>
+        tapi itu bukan kekurangan.<br>
+        itu tanda bahwa hatimu masih utuh dan masih memilih untuk peduli.</p>
+
+        <div class="ltr-divider">
+          <svg viewBox="-15 -15 30 30" width="20" height="20" overflow="visible"><use href="#sym-sunflower"/></svg>
+          <svg viewBox="-14 -14 28 28" width="18" height="18" overflow="visible"><use href="#sym-daisy"/></svg>
+          <svg viewBox="-15 -15 30 30" width="20" height="20" overflow="visible"><use href="#sym-sunflower"/></svg>
+        </div>
+
+        <p>bahwa di tengah dunia yang sering membuat orang mati rasa,<br>
+        kamu masih bisa merasakan dengan begitu dalam.<br>
+        masih bisa menangis untuk orang lain,<br>
+        masih bisa peduli meski sering kali ikut terluka karenanya.</p>
+
+        <p>semoga bertambahnya usia ini<br>
+        bukan sekadar angka yang berganti,<br>
+        tapi ruang baru untuk kamu berdamai<br>
+        dengan diri yang selama ini kamu hakimi sendiri.</p>
+
+        <div class="ltr-divider">
+          <svg viewBox="-15 -15 30 30" width="20" height="20" overflow="visible"><use href="#sym-anemone"/></svg>
+          <svg viewBox="-16 -16 32 32" width="18" height="18" overflow="visible"><use href="#sym-carnation"/></svg>
+          <svg viewBox="-15 -15 30 30" width="20" height="20" overflow="visible"><use href="#sym-anemone"/></svg>
+        </div>
+
+        <p>semoga kamu mulai belajar berlaku adil,<br>
+        pada diri yang sudah berjalan sejauh ini.<br>
+        yang lelah bukan karena lemah,<br>
+        tapi karena terlalu lama menanggung sendiri.</p>
+
+        <p>semoga banyak hal baik datang menghampirimu.<br>
+        bukan yang sekadar memberimu bahagia,<br>
+        tapi yang juga memberimu makna.</p>
+
+        <div class="ltr-divider">
+          <svg viewBox="-15 -16 30 32" width="18" height="20" overflow="visible"><use href="#sym-bluebell"/></svg>
+          <svg viewBox="-15 -15 30 30" width="22" height="22" overflow="visible"><use href="#sym-peony"/></svg>
+          <svg viewBox="-15 -16 30 32" width="18" height="20" overflow="visible"><use href="#sym-bluebell"/></svg>
+        </div>
+
+        <p>dan kalau nanti dunia terasa terlalu berat,<br>
+        semoga kamu ingat<br>
+        tidak apa-apa menjadi seseorang yang lembut.<br>
+        tidak apa-apa menangis, tidak apa-apa merasa rapuh.<br>
+        karena bahkan hati yang paling tangguh pun, tetap butuh ruang untuk merasa.</p>
+
+        <p>selamat menapaki 22, Avicena. 🌸<br>
+        tolong hidup lebih lama, dan tolong belajar lebih percaya<br>
+        bahwa dirimu pantas dicintai, termasuk oleh dirimu sendiri.</p>
+      </div>
+
+      <div class="letter-foot">
+        <button class="back-btn" onclick="closeModal()">← back to your gifts</button>
+      </div>
     </div>
   </div>
 </div>
