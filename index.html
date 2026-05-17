@@ -2222,9 +2222,12 @@ function openEnvelope() {
     triggerFlowerWallReveal();
   }, 880);
 
-  /* Step 3: stop canvas dulu, lalu transisi */
+  /* Step 3: stop canvas + sembunyikan screen1 sepenuhnya, baru transisi */
   setTimeout(() => {
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    /* visibility:hidden langsung hentikan semua painting screen1
+       (lebih efektif dari pause animation — compositor layer langsung dibuang) */
+    $('screen1').style.visibility = 'hidden';
     fadeTo('screen2');
   }, 2000);
 }
