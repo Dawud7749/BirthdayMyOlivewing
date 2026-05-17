@@ -2210,27 +2210,20 @@ function openEnvelope() {
   const hs = $('seal-hotspot');
   if (hs) hs.onclick = null;
 
-  /* Step 1: flap opens smoothly */
-  requestAnimationFrame(() => {
-    $('env-flap').style.transform = 'scaleY(-1)';
-  });
+  /* Step 1: flap opens */
+  requestAnimationFrame(() => { $('env-flap').style.transform = 'scaleY(-1)'; });
 
-  /* Step 2: burst + reveal — dan PRE-SPAWN bunga screen2 di sini
-     (1.1 detik sebelum transisi, jadi browser sudah stabil saat curtain muncul) */
+  /* Step 2: burst */
   setTimeout(() => {
     const box = $('env-box');
     const r   = box.getBoundingClientRect();
-    explode(r.left + r.width / 2, r.top + r.height * 0.6, 100);
+    explode(r.left + r.width / 2, r.top + r.height * 0.6, 80);
     triggerFlowerWallReveal();
-    spawnFlowers('fl2', 38);   /* pre-spawn sekarang, bukan saat curtain */
   }, 880);
 
-  /* Step 3: freeze screen1 + stop canvas + transisi ke screen2 */
+  /* Step 3: stop canvas dulu, lalu transisi */
   setTimeout(() => {
-    /* Hentikan canvas particles agar tidak bersaing dengan curtain */
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-    /* Pause semua CSS animation screen1 — tidak perlu render lagi */
-    $('screen1').classList.add('frozen');
     fadeTo('screen2');
   }, 2000);
 }
@@ -2247,35 +2240,35 @@ function fadeTo(targetId, onSwitch) {
 
   const curtain = $('curtain');
 
-  /* Spawn screen2 flowers HANYA jika belum di-pre-spawn oleh openEnvelope */
-  if (targetId === 'screen2') {
-    const fl2 = $('fl2');
-    if (!fl2 || !fl2.children.length) spawnFlowers('fl2', 38);
-  }
+  /* Spawn flowers dulu */
+  if (targetId === 'screen2') spawnFlowers('fl2', 38);
 
-  /* 1 — Fade curtain IN */
-  curtain.classList.add('show');
+  /* Double-rAF: beri browser 2 frame untuk proses spawn + layout
+     SEBELUM curtain mulai — ini yang menghilangkan spike lag */
+  requestAnimationFrame(() => requestAnimationFrame(() => {
 
-  setTimeout(() => {
-    /* 2 — Switch while hidden */
-    document.querySelectorAll('.screen, .modal')
-      .forEach(el => el.classList.remove('active'));
+    /* 1 — Curtain fade IN */
+    curtain.classList.add('show');
 
-    const t = $(targetId);
-    if (t) {
-      t.classList.add('active');
-      if (typeof t.scrollTop !== 'undefined') t.scrollTop = 0;
-    }
-    if (onSwitch) onSwitch();
+    setTimeout(() => {
+      /* 2 — Switch screen saat curtain opaque */
+      document.querySelectorAll('.screen, .modal')
+        .forEach(el => el.classList.remove('active'));
+      const t = $(targetId);
+      if (t) {
+        t.classList.add('active');
+        if (typeof t.scrollTop !== 'undefined') t.scrollTop = 0;
+      }
+      if (onSwitch) onSwitch();
 
-    /* 3 — Two rAFs: first commits the DOM change, second paints it,
-           then we start fading out so there is zero flash */
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      curtain.classList.remove('show');
-      /* unlock after fade-out completes (380ms) */
-      setTimeout(() => { curtainBusy = false; }, 400);
-    }));
-  }, 400);
+      /* 3 — Double-rAF lagi sebelum fade out */
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        curtain.classList.remove('show');
+        setTimeout(() => { curtainBusy = false; }, 420);
+      }));
+    }, 400);
+
+  }));
 }
 
 /* ---------------- NAVIGATION ---------------- */
