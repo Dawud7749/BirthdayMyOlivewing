@@ -2354,44 +2354,51 @@ function bloomFlowerGarden() {
   const W = gc.width, H = gc.height;
   gardenStems = []; gardenLastMs = 0;
 
-  /* Tip bunga harus di BAWAH dasar kue — ambil bottom of #cake-wrap */
-  let floorY = H * 0.70;   /* fallback 70% dari atas */
+  /* Dua zona ketinggian:
+     SAMPING (xf < 0.30 atau xf > 0.70) → sejajar kue (bottom of cake-wrap)
+     TENGAH  (0.30 ≤ xf ≤ 0.70)        → pendek, di bawah tombol pink        */
   const cakeWrapEl = $('cake-wrap');
+  let sideY   = H * 0.62;   /* fallback — samping sejajar kue */
+  let centerY = H * 0.80;   /* fallback — tengah di bawah tombol */
+
   if (cakeWrapEl) {
-    const r = cakeWrapEl.getBoundingClientRect();
-    floorY = r.bottom + 18; /* tepat di bawah piring kue */
+    const r  = cakeWrapEl.getBoundingClientRect();
+    sideY    = r.bottom + 6;           /* ujung bunga pas di bawah piring */
+    centerY  = r.bottom + 80;          /* tengah: jauh di bawah piring/tombol */
   }
 
   const now = performance.now();
 
-  /* Bunga tinggi — ujung tepat di bawah kue */
-  const tall = [
-    {xf:.04,type:'sunflower'},{xf:.15,type:'lily'},{xf:.27,type:'rose'},
-    {xf:.38,type:'sunflower'},{xf:.50,type:'lily'},{xf:.62,type:'rose'},
-    {xf:.73,type:'sunflower'},{xf:.84,type:'lily'},{xf:.94,type:'rose'},
-  ];
-  /* Bunga sedang — lebih pendek, isi celah */
-  const mid = [
-    {xf:.09,type:'rose'},{xf:.21,type:'sunflower'},{xf:.33,type:'lily'},
-    {xf:.44,type:'rose'},{xf:.56,type:'sunflower'},{xf:.68,type:'lily'},
-    {xf:.79,type:'rose'},{xf:.90,type:'sunflower'},
+  /* Semua bunga dalam satu array dengan zona masing-masing */
+  const flowers = [
+    /* SAMPING KIRI */
+    {xf:.03, type:'sunflower'}, {xf:.11, type:'lily'},
+    {xf:.19, type:'rose'},      {xf:.27, type:'sunflower'},
+    /* TENGAH — pendek */
+    {xf:.35, type:'lily'},      {xf:.43, type:'rose'},
+    {xf:.50, type:'sunflower'}, {xf:.57, type:'lily'},
+    {xf:.65, type:'rose'},
+    /* SAMPING KANAN */
+    {xf:.73, type:'sunflower'}, {xf:.81, type:'lily'},
+    {xf:.89, type:'rose'},      {xf:.96, type:'sunflower'},
+    /* Filler samping kiri (lebih pendek sedikit) */
+    {xf:.07, type:'rose'},      {xf:.15, type:'sunflower'},
+    {xf:.23, type:'lily'},
+    /* Filler samping kanan */
+    {xf:.77, type:'lily'},      {xf:.85, type:'rose'},
+    {xf:.93, type:'lily'},
   ];
 
-  tall.forEach((f,i) => {
+  flowers.forEach((f, i) => {
+    const isSide = f.xf < 0.30 || f.xf > 0.70;
+    const tipY   = isSide
+      ? sideY   + rand(-8, 16)
+      : centerY + rand(-10, 22);
+
     gardenStems.push(new GardenStem(
-      W*f.xf + rand(-7,7),
-      floorY + rand(-8, 18),    /* sekitar garis bawah kue */
-      f.type,
-      now + i*140 + rand(0,55),
-      W, H
-    ));
-  });
-  mid.forEach((f,i) => {
-    gardenStems.push(new GardenStem(
-      W*f.xf + rand(-6,6),
-      floorY + rand(35, 70),    /* lebih pendek, tidak akan menutupi kue */
-      f.type,
-      now + 220 + i*110 + rand(0,50),
+      W * f.xf + rand(-6, 6),
+      tipY, f.type,
+      now + i * 120 + rand(0, 50),
       W, H
     ));
   });
