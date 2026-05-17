@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <meta name="theme-color" content="#F5F0E8"/>
   <title>Happy Birthday, Avicena</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>"/>
+  <!-- Favicon inline — cegah 404 favicon.ico di semua browser -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%B8%3C/text%3E%3C/svg%3E"/>
+  <link rel="shortcut icon" href="data:image/x-icon;,"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Caveat:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet"/>
@@ -2244,35 +2246,32 @@ function fadeTo(targetId, onSwitch) {
 
   const curtain = $('curtain');
 
-  /* Spawn flowers dulu */
-  if (targetId === 'screen2') spawnFlowers('fl2', 38);
+  /* 1 — Curtain fade IN dulu, tidak ada pekerjaan lain → murni smooth */
+  curtain.classList.add('show');
 
-  /* Double-rAF: beri browser 2 frame untuk proses spawn + layout
-     SEBELUM curtain mulai — ini yang menghilangkan spike lag */
-  requestAnimationFrame(() => requestAnimationFrame(() => {
+  setTimeout(() => {
+    /* 2 — Curtain sekarang opaque, user tidak lihat apapun.
+           Lakukan semua pekerjaan berat di sini: switch screen + spawn bunga */
+    document.querySelectorAll('.screen, .modal')
+      .forEach(el => el.classList.remove('active'));
 
-    /* 1 — Curtain fade IN */
-    curtain.classList.add('show');
+    const t = $(targetId);
+    if (t) {
+      t.classList.add('active');
+      if (typeof t.scrollTop !== 'undefined') t.scrollTop = 0;
+    }
+    if (onSwitch) onSwitch();
 
+    /* Spawn bunga SAAT CURTAIN OPAQUE — user tidak tahu ada kerja keras di sini */
+    if (targetId === 'screen2') spawnFlowers('fl2', 25);
+
+    /* Beri browser 80ms untuk proses spawn, lalu curtain fade OUT */
     setTimeout(() => {
-      /* 2 — Switch screen saat curtain opaque */
-      document.querySelectorAll('.screen, .modal')
-        .forEach(el => el.classList.remove('active'));
-      const t = $(targetId);
-      if (t) {
-        t.classList.add('active');
-        if (typeof t.scrollTop !== 'undefined') t.scrollTop = 0;
-      }
-      if (onSwitch) onSwitch();
+      curtain.classList.remove('show');
+      setTimeout(() => { curtainBusy = false; }, 420);
+    }, 80);
 
-      /* 3 — Double-rAF lagi sebelum fade out */
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        curtain.classList.remove('show');
-        setTimeout(() => { curtainBusy = false; }, 420);
-      }));
-    }, 400);
-
-  }));
+  }, 400);
 }
 
 /* ---------------- NAVIGATION ---------------- */
