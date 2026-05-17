@@ -563,7 +563,7 @@
       z-index: 9500;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.38s cubic-bezier(0.4,0,0.2,1);
+      transition: opacity 0.22s cubic-bezier(0.4,0,0.2,1);
       will-change: opacity;
     }
     #curtain.show { opacity: 1; pointer-events: all; }
@@ -2227,13 +2227,13 @@ function openEnvelope() {
     triggerFlowerWallReveal();
   }, 880);
 
-  /* Step 3: sembunyikan screen1 lalu transisi.
+  /* Step 3: sembunyikan screen1 lalu transisi (lebih cepat: 1200ms).
      JANGAN cancel canvas — biarkan partikel terus jatuh dan muncul lagi di screen2
      setelah curtain fade out (karena canvas z-index 850 di bawah curtain 9500). */
   setTimeout(() => {
     $('screen1').style.visibility = 'hidden';
     fadeTo('screen2');
-  }, 2000);
+  }, 1200);
 }
 
 /* ----------------------------------------------------------------
@@ -2267,9 +2267,9 @@ function fadeTo(targetId, onSwitch) {
 
       requestAnimationFrame(() => requestAnimationFrame(() => {
         curtain.classList.remove('show');
-        setTimeout(() => { curtainBusy = false; }, 420);
+        setTimeout(() => { curtainBusy = false; }, 240);
       }));
-    }, 400);
+    }, 230);
   }));
 }
 
